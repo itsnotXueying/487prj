@@ -4,10 +4,12 @@ import numpy as np
 import torch
 import random
 import nltk
-from nltk.tokenize import word_tokenize
+from nltk.tokenize import word_tokenize,sent_tokenize
 from nltk.corpus import stopwords
 import string
 import gensim.downloader
+import isodate
+import sys
 
 punks = string.punctuation
 punks = punks+ '``'+ "''"
@@ -39,7 +41,7 @@ class Source(Dataset):
         self._load_metadata()
 
     def _load_metadata(self):
-        self.data = pd.read_csv('allRecipes.csv')
+        self.data = pd.read_csv('useReviews.csv')
         #grab only rows we care about for a train/val/test split
         self.data = self.data.loc[self.data['split'] == self.task]
         self.data.reset_index(inplace=True)
@@ -49,29 +51,28 @@ class Source(Dataset):
 
     def __getitem__(self, idx):
         row = self.data.loc[idx]
-        time = row.PrepTime
-        instructions = row.RecipeInstructions
+        y = row[['1','2','3','4','5']].astype(float).values
+        y = y.astype(np.float32)
+        y = torch.tensor(y)
+        review = row.Review
         review_embedding = np.zeros((200,))
         clean_tokens = []
-        tokenized = word_tokenize(instructions)
-        for token in tokenized:
-            if token not in punks and token not in stopword_list:
-                clean_tokens.append(token.lower())
-        if 'c' in clean_tokens:
-            clean_tokens.remove('c')
+        if type(review) != str:
+            print(review)
+            print(row['index'])
+            sys.exit()
+        sent_tokens = sent_tokenize(review)
+        for sent in sent_tokens:
+            words = word_tokenize(sent)
+            for w in words:
+                if w not in punks and w not in stopword_list:
+                    clean_tokens.append(w.lower())
         for token in clean_tokens:
             if token not in embed:
                 continue
             review_embedding += embed[token]
         
-        review_embedding = torch.tensor(review_embedding)
+        review_embedding = torch.tensor(review_embedding, dtype=torch.float32)
 
-        end_time_char = time[-1]
-        if end_time_char == 'M':
-            time = float(time[2:-1])
-        elif end_time_char == 'H':
-            time = float(time[2:-1]) * 60
-        elif end_time_char == 'S':
-            time = float(time[2:-1]) / 60
         
-        return review_embedding, time
+        return review_embedding, y

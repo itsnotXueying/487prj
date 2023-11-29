@@ -10,8 +10,12 @@ class MLP(nn.Module):
             nn.ReLU(),
             nn.Linear(100, 50),
             nn.ReLU(),
-            nn.Linear(50, 1))
+            nn.Linear(50, 5),
+            nn.Softmax(dim=1))
             
     def forward(self, x):
+
+        x = x.float()
         x = self.first_pass(x)
+        x = x.squeeze()
         return x

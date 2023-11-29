@@ -144,7 +144,7 @@ def early_stopping(stats, curr_count_to_patience, global_min_loss):
     return curr_count_to_patience, global_min_loss
 
 
-def evaluate_epoch(axes,tr_loader,val_loader,te_loader,model,criterion,epoch,
+def evaluate_epoch(tr_loader,val_loader,te_loader,model,criterion,epoch,
                    stats,device,info,save_folder,include_test=True,
                    update_plot=True,multiclass=False,):
     def _get_metrics(loader,is_train):
@@ -170,34 +170,28 @@ def evaluate_epoch(axes,tr_loader,val_loader,te_loader,model,criterion,epoch,
         y_score = torch.cat(y_score)
         loss = np.mean(running_loss)
 
-        return round(loss,5)
+        return round(loss,3)
 
-    train_aurocs, train_loss = _get_metrics(tr_loader,True)
-    val_aurocs, val_loss  = _get_metrics(val_loader,False)
-    te_aurocs, te_loss  = _get_metrics(te_loader,False)
+    train_loss = _get_metrics(tr_loader,True)
+    val_loss  = _get_metrics(val_loader,False)
+    te_loss  = _get_metrics(te_loader,False)
 
     print(f'Epoch:{epoch}')
-    print(f'train aurocs {train_aurocs[:3]}')
-    print(f'val aurocs {val_aurocs[:3]}')
-    print(f'test aurocs {te_aurocs[:3]}')
+    print(f'train loss {train_loss}')
+    print(f'val loss {val_loss}')
+    print(f'test loss {te_loss}\n')
 
-    helpy_log.log_aurocs(epoch,train_aurocs,info,save_folder,'train')
-    helpy_log.log_aurocs(epoch,val_aurocs,info,save_folder,'val')
-    helpy_log.log_aurocs(epoch,te_aurocs,info,save_folder,'test')
-
-    
     stats_at_epoch = [train_loss, val_loss, te_loss]
     stats.append(stats_at_epoch)
     
     helpy_log.log_training(epoch, stats_at_epoch, info, save_folder)
-    if update_plot:
-        helpy_log.update_training_plot(axes, epoch, stats)
     
 
 def train_epoch(data_loader, model, criterion, optimizer, device):
     model.train()              
     for i, (X, y) in enumerate(data_loader):
         X,y = X.to(device), y.to(device)
+        y = y.float()
         optimizer.zero_grad()
         y_pred = model(X)
         loss = criterion(y_pred, y)
